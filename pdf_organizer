@@ -67,7 +67,7 @@ def sort_file(infile, outpath, no_action=False, verbose=False, fmt='%Y'):
     
     try:
         outfile = target(infile, outpath, fmt)
-    except KeyError:
+    except (ValueError, KeyError):
         if verbose:
             print '{0} has no date string, skipping.'.format(infile)
             return
