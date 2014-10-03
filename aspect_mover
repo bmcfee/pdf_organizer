@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+# CREATED:2014-10-02 16:12:29 by Brian McFee <brian.mcfee@nyu.edu>
+'''Reorganize pdfs based on aspect ratio'''
+
+import argparse
+import PyPDF2
+import os
+import glob
+import sys
+import time
+import datetime
+import shutil
+
+
+def full_path(path):
+    '''Perform all path manipulations'''
+
+    path = os.path.expanduser(path)
+    path = os.path.expandvars(path)
+    path = os.path.abspath(path)
+
+    return path
+
+def get_aspect_ratio(filename):
+    
+    aspect = None
+    
+    with open(filename, 'rb') as stream:
+        pdf = PyPDF2.PdfFileReader(stream)
+        
+        # Get the first page
+        page = pdf.getPage(0)
+        
+        # Get the media box
+        
+        x1, y1, x2, y2 = page['/MediaBox']
+        
+        aspect = float(x2 - x1) / float(y2 - y1)
+    
+    return aspect
+
+def is_horiz(infile):
+    aspect = get_aspect_ratio(infile)
+    
+    if aspect and aspect >= 1:
+        return True
+
+    return False
+
+def target(infile, outpath):
+    '''Determine the target of an input file with the given 
+    output path and date format string'''
+
+    if is_horiz(infile):
+        outfile = os.path.join(full_path(outpath), os.path.basename(infile))
+    else:
+        return infile
+
+    return outfile
+
+
+def makedirs(filename):
+    outdir = os.path.dirname(filename)
+    
+    if not os.path.exists(outdir):
+        os.makedirs(os.path.dirname(filename))
+    elif not os.path.isdir(outdir):
+        raise OSError('Destination {0} is not a directory'.format(outdir))
+    
+
+
+def sort_file(infile, outpath, no_action=False, verbose=False):
+    
+    try:
+        outfile = target(infile, outpath)
+    except (ValueError, KeyError, TypeError):
+        if verbose:
+            print '{0} has no date string, skipping.'.format(infile)
+            return
+    except PyPDF2.utils.PdfReadError as e:
+        if verbose:
+            print '{0} : {1}'.format(infile, e)
+            return
+
+    if infile == outfile:
+        return
+
+    if verbose:
+        if no_action:
+            print 'would move ',
+        
+        print '{0} => {1}'.format(infile, outfile)
+    
+    if no_action:
+        return
+    
+    makedirs(outfile)    
+    shutil.move(infile, outfile)
+
+
+def sort_globs(pattern, outpath, **kwargs):
+    
+    for infile in glob.glob(pattern):
+        sort_file(infile, outpath, **kwargs)
+
+def get_params(args):
+
+    parser = argparse.ArgumentParser(description='Move PDFs with horizontal layout')
+
+    parser.add_argument('outpath', action='store', 
+                        help='Destination directory to store sorted files')
+
+    parser.add_argument('-n', '--dry-run', dest='no_action', action='store_true',
+                        help='do not move files')
+
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
+                        help='verbose output')
+
+    parser.add_argument('patterns', nargs='+', action='store', 
+                        help='One or more file patterns (eg *.pdf) to process')
+
+    return vars(parser.parse_args(args))
+
+if __name__ == '__main__':
+
+    params = get_params(sys.argv[1:])
+
+    for pattern in params['patterns']:
+        sort_globs(pattern, 
+                   params['outpath'], 
+                   verbose=params['verbose'],
+                   no_action=params['no_action'])

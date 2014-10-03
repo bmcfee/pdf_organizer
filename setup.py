@@ -11,7 +11,7 @@ setup(
     long_description="""\
         A simple PDF sorting tool
     """,
-    scripts=['pdf_organizer'],
+    scripts=['pdf_organizer', 'aspect_mover'],
     classifiers=[
         "License :: OSI Approved :: GNU General Public License (GPL)",
         "Programming Language :: Python",
