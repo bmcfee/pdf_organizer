@@ -67,11 +67,14 @@ def sort_file(infile, outpath, no_action=False, verbose=False, fmt='%Y'):
     
     try:
         outfile = target(infile, outpath, fmt)
-    except (ValueError, KeyError):
+    except (ValueError, KeyError, TypeError):
         if verbose:
             print '{0} has no date string, skipping.'.format(infile)
             return
-    
+    except PyPDF2.utils.PdfReadError as e:
+        if verbose:
+            print '{0} : {1}'.format(infile, e)
+            return
 
     if verbose:
         if no_action:
